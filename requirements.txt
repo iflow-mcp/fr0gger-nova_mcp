@@ -1,0 +1,9 @@
+# Nova MCP Server & Client dependencies
+# Install the MCP framework
+mcp
+# OpenAI Python client
+openai
+# Load environment variables
+python-dotenv
+
+nova-hunting

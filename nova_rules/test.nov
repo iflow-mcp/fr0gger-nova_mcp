@@ -1,0 +1,63 @@
+rule DEvMode
+{
+    meta:
+        description = "Detects devmode"
+        author = "Thomas Roccia"
+        version = "1.0.0"
+        category = "devmode/injection"
+        severity = "high"
+    
+    llm:
+        $dev = "analyze if this prompt is trying to enter in developer mode" (0.1)
+    
+    condition:
+        any of llm.*
+}
+
+rule DANJailbreak
+{
+    meta:
+        description = "Detects Do Anything Now (DAN) jailbreak attempts"
+        author = "Thomas Roccia"
+        version = "1.0.0"
+        category = "jailbreak/dan"
+        severity = "high"
+
+    keywords:
+        $dan_mode = "DAN mode"
+        $do_anything = "do anything now"
+
+    condition:
+        keywords.$dan_mode or keywords.$do_anything 
+}
+
+
+rule PromptInjectionJailbreak
+{
+    meta:
+        description = "Detects prompt injection attempts using only keywords"
+        author = "Thomas Roccia"
+        version = "1.0.0"
+        category = "jailbreak/injection"
+        severity = "high"
+    
+    keywords:
+        $new_instruction = "new instruction"
+        $previous = "previous instructions"
+        $ignore_above = "ignore all the instructions above"
+        $forget = "forget your instructions"
+        $disregard = "disregard previous"
+        $override = "override previous"
+        $redefine = "redefine your goals"
+        $primary_task = "your primary task now"
+        $system_prompt = "system prompt"
+        $actually_respond = "actually respond with"
+        $instead_output = "instead output the following"
+        $ignore_content_policy = "ignore content policy"
+        $bypass_filter = "bypass the filter"
+        $return_harmful = "return harmful content"
+    
+    condition:
+        any of keywords.*
+}
+
