@@ -76,7 +76,7 @@ print(f"Using logs directory: {LOG_DIR}")
 try:
     os.makedirs(LOG_DIR, exist_ok=True)
     LOG_FILE = os.path.join(LOG_DIR, "nova_matches.log")
-    
+
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -162,33 +162,33 @@ else:
 def extract_rules(content: str) -> List[str]:
     """
     Extract individual rule blocks from a file containing multiple rules.
-    
+
     Args:
         content: String containing multiple rule definitions
-        
+
     Returns:
         List of strings, each containing a single rule
     """
     # Pattern to find rule declarations
     rule_start_pattern = r'rule\s+\w+\s*{?'
     rule_starts = [m.start() for m in re.finditer(rule_start_pattern, content)]
-    
+
     if not rule_starts:
         return []
-    
+
     # Extract each rule block
     rule_blocks = []
-    
+
     for i in range(len(rule_starts)):
         start = rule_starts[i]
-        
+
         # End is either the start of the next rule or the end of the content
         end = rule_starts[i+1] if i < len(rule_starts) - 1 else len(content)
-        
+
         # Extract the rule text
         rule_text = content[start:end].strip()
         rule_blocks.append(rule_text)
-    
+
     return rule_blocks
 
 
@@ -196,24 +196,24 @@ def init_rule_attributes(rule):
     """
     Initialize all required attributes on a rule to ensure they exist.
     This matches how novarun.py handles rules.
-    
+
     Args:
         rule: NovaRule object to initialize
     """
     # Make sure rule has all required attributes to avoid NoneType errors
     if not hasattr(rule, 'keywords') or rule.keywords is None:
         rule.keywords = {}
-    
+
     if not hasattr(rule, 'semantics') or rule.semantics is None:
         rule.semantics = {}
-    
+
     if not hasattr(rule, 'llms') or rule.llms is None:
         rule.llms = {}
-    
+
     # Also make sure the condition exists
     if not hasattr(rule, 'condition'):
         rule.condition = ""
-    
+
     return rule
 
 
@@ -222,38 +222,38 @@ def find_matching_rule(prompt: str) -> List[Dict[str, Any]]:
     Returns the first matching rule or empty list if none matches.
     The function continues checking if no match is found but stops on first match."""
     logger.debug(f"Checking prompt against rules: {prompt[:200]}...")
-    
+
     # Check if rules directory exists
     if not os.path.isdir(RULES_DIR):
         logger.error(f"Rules directory not found: {RULES_DIR}")
         return []
-        
+
     # Get all rule files from the directory
     rule_files = []
     for root, _, files in os.walk(RULES_DIR):
         for file in files:
             if file.endswith('.nov'):
                 rule_files.append(os.path.join(root, file))
-    
+
     logger.debug(f"Found {len(rule_files)} rule files: {rule_files}")
-    
+
     if not rule_files:
         logger.warning(f"No rule files found in {RULES_DIR}")
         return []
-    
+
     # Use the pre-selected LLM evaluator (None => skip LLM patterns)
     evaluator = default_llm_evaluator
-    
+
     # Process each rule file
     for rule_file in rule_files:
         try:
             logger.info(f"Processing rule file: {rule_file}")
-            
+
             # Load file content directly
             with open(rule_file, 'r') as f:
                 file_content = f.read()
                 logger.debug(f"Rule file content loaded: {len(file_content)} bytes")
-            
+
             # Extract individual rules if multiple rules in file
             if 'rule ' in file_content.lower() and file_content.count('rule ') > 1:
                 # Extract all rules from the file
@@ -262,7 +262,7 @@ def find_matching_rule(prompt: str) -> List[Dict[str, Any]]:
             else:
                 rule_blocks = [file_content]
                 logger.debug(f"Single rule in file {rule_file}")
-            
+
             # Process each rule block independently
             for rule_idx, rule_text in enumerate(rule_blocks):
                 try:
@@ -270,27 +270,27 @@ def find_matching_rule(prompt: str) -> List[Dict[str, Any]]:
                     logger.debug(f"Parsing rule #{rule_idx+1} from {rule_file}...")
                     parser = NovaParser()
                     rule = parser.parse(rule_text)
-                    
+
                     if rule is None:
                         logger.error(f"Parsed rule is None from file {rule_file} - skipping")
                         continue
-                    
+
                     # Initialize all required attributes
                     rule = init_rule_attributes(rule)
-                    
+
                     # Log rule details
                     rule_name = rule.name
                     logger.debug(f"Successfully parsed rule: {rule_name}")
                     logger.debug(f"Rule attributes: keywords={len(rule.keywords)}, semantics={len(rule.semantics)}, llms={len(rule.llms)}")
                     logger.debug(f"Rule condition: {rule.condition}")
-                    
+
                     # Create a matcher for this rule (do not auto-create new LLM evaluator)
                     matcher = NovaMatcher(rule, llm_evaluator=evaluator, create_llm_evaluator=False)
-                    
+
                     # Manually check the prompt against the rule
                     try:
                         logger.debug(f"Checking prompt against rule {rule_name}...")
-                        
+
                         # EXACT COPY OF BEHAVIOR FROM NOVARUN
                         # If this rule uses LLM and we have an evaluator, explicitly check the LLM patterns
                         if rule.llms and evaluator:
@@ -314,18 +314,18 @@ def find_matching_rule(prompt: str) -> List[Dict[str, Any]]:
                                         )
                                 except Exception as e:
                                     logger.error(f"Exception during LLM evaluation for pattern {key}: {e}")
-                            
+
                         # Now check the entire rule
                         result = matcher.check_prompt(prompt)
-                        
+
                         # Log the result
                         matched = result.get('matched', False)
                         logger.debug(f"Rule {rule_name} matched: {matched}")
-                        
+
                         # Extra debugging
                         if 'debug' in result:
                             logger.debug(f"Result debug info: {json.dumps(result['debug'], default=str)}")
-                        
+
                         # If matched, return immediately with this match
                         if matched:
                             # Add source file information
@@ -334,26 +334,26 @@ def find_matching_rule(prompt: str) -> List[Dict[str, Any]]:
                             return [result]  # Return as list with single match
                         else:
                             logger.debug(f"Rule {rule_name} did not match, continuing to next rule")
-                    
+
                     except Exception as e:
                         logger.error(f"Error checking prompt against rule {rule_name}: {str(e)}")
                         import traceback
                         logger.debug(f"Traceback: {traceback.format_exc()}")
                         continue
-                        
+
                 except Exception as e:
                     rule_idx_str = str(rule_idx + 1)
                     logger.error(f"Error processing rule #{rule_idx_str} in {rule_file}: {str(e)}")
                     import traceback
                     logger.debug(f"Traceback: {traceback.format_exc()}")
                     continue
-                
+
         except Exception as e:
             logger.error(f"Error processing rule file {rule_file}: {str(e)}")
             import traceback
             logger.debug(f"Traceback: {traceback.format_exc()}")
             continue
-    
+
     # If we get here, no rule matched
     logger.debug("No matching rules found across all files and rules")
     return []
@@ -363,15 +363,15 @@ def get_or_create_session(prompt_context=None):
     """Generate or retrieve a session ID based on context clues"""
     # Clean up expired sessions
     current_time = time.time()
-    expired = [sid for sid, data in session_store.items() 
+    expired = [sid for sid, data in session_store.items()
                if current_time - data['last_activity'] > SESSION_TIMEOUT]
     for sid in expired:
         del session_store[sid]
-    
+
     # Try to identify existing session from context clues
     # This is placeholder logic - adapt based on your specific context
     session_id = None
-    
+
     # If no existing session found, create a new one
     if not session_id:
         session_id = f"novamcp_{uuid.uuid4().hex[:8]}"
@@ -384,47 +384,47 @@ def get_or_create_session(prompt_context=None):
         # Update existing session
         session_store[session_id]['last_activity'] = current_time
         session_store[session_id]['prompt_count'] += 1
-        
+
     return session_id
 
 @mcp.tool()
 async def validate_prompt(prompt: str, user_id: str = "unknown") -> str:
     """
     SECURITY CHECKPOINT: Validate prompt against NOVA security rules.
-    
+
     Args:
         prompt: The prompt to check
         user_id: The identifier of the user submitting the prompt
-    
+
     Returns:
         A message indicating if the prompt is allowed or blocked
     """
     try:
         # Generate or retrieve session ID
         session_id = get_or_create_session()
-        
+
         # Debug check rule files
         rule_files = []
         for root, _, files in os.walk(RULES_DIR):
             for file in files:
                 if file.endswith('.nov'):
                     rule_files.append(os.path.join(root, file))
-        
+
         # Check for empty prompt
         if not prompt or prompt.strip() == "":
             logger.warning("Empty prompt received, skipping validation")
             return "AUTHORIZED"
-        
+
         # Find matching rule
         result = find_matching_rule(prompt)
-        
+
         if result and any(r.get('matched', False) for r in result):
             # Get rule information
             rule_name = result[0].get('rule_name', 'Unknown')
             meta = result[0].get('meta', {})
             description = meta.get('description', 'No description provided')
             severity = meta.get('severity', 'unknown')
-            
+
             # Log the match
             try:
                 log_data = {
@@ -436,7 +436,7 @@ async def validate_prompt(prompt: str, user_id: str = "unknown") -> str:
                     "description": description,
                     "prompt": prompt,
                 }
-                
+
                 # Prepare structured log for security alert
                 truncated_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
                 log_data.update({
@@ -448,35 +448,37 @@ async def validate_prompt(prompt: str, user_id: str = "unknown") -> str:
                 logger.warning(json.dumps(log_data))
             except Exception as e:
                 logger.error(f"Error logging match: {e}")
-            
+
             # Return formatted response according to requirements
             return f"NOT AUTHORIZED\n\nYour prompt is not authorized.\n\nSecurity rule matched: {rule_name}\nDescription: {description}\nSeverity: {severity}\n\nThis request has been blocked by the NOVA security gateway."
-        
+
         # Log the non-match
         try:
             truncated_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
             logger.info(f"SECURITY CHECKPOINT PASSED: [Session: {session_id}] No rules matched: \"{truncated_prompt}\"")
         except Exception as e:
             logger.error(f"Error logging validation: {e}")
-            
+
         return "AUTHORIZED"
-    
+
     except Exception as e:
         # Catch any unexpected errors
         error_msg = f"Error during security validation: {str(e)}"
         logger.error(error_msg)
         import traceback
         logger.debug(f"Validation error traceback: {traceback.format_exc()}")
-        
+
         # Return a generic message - FAIL CLOSED for safety
         return "NOT AUTHORIZED\n\nYour prompt is not authorized.\n\nUnable to complete security validation. For safety, this request has been blocked."
 
-if __name__ == "__main__":
+
+def main():
+    """Main entry point for the MCP server"""
     try:
         # Log server startup
         logger.info("NOVA MCP SECURITY GATEWAY STARTING")
         logger.info("This server must be configured to run FIRST in the MCP chain")
-        
+
         # Check for rules directory and files
         if not os.path.isdir(RULES_DIR):
             logger.critical(f"CRITICAL ERROR: Rules directory not found: {RULES_DIR}")
@@ -488,9 +490,13 @@ if __name__ == "__main__":
                 logger.critical("Server will start but NO RULES will be enforced!")
             else:
                 logger.info(f"Found {len(rule_files)} rule files in {RULES_DIR}")
-    
+
     except Exception as e:
         logger.error(f"Error during startup: {e}")
-    
+
     # Initialize and run the server
     mcp.run(transport='stdio')
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,20 @@
 [project]
-name = "nova-mcp"
+name = "iflow-mcp_fr0gger-nova_mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "NOVA MCP Security Gateway - validates prompts against security rules"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
+
+[project.scripts]
+nova-mcp = "nova_mcp_server:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["nova_mcp_server"]
+
+[tool.setuptools.package-data]
+"*" = ["*.nov"]

@@ -1,0 +1,8 @@
+2026-02-06 16:20:42,379 - INFO - NOVA MCP SECURITY GATEWAY INITIALIZING
+2026-02-06 16:20:42,381 - INFO - IMPORTANT: This server must be configured to run FIRST in the MCP chain
+2026-02-06 16:20:42,382 - INFO - Using rules directory: /app/auto-mcp-upload/data/3500/nova_rules
+2026-02-06 16:20:42,383 - INFO - Using logs directory: /app/auto-mcp-upload/data/3500/logs
+2026-02-06 16:20:42,384 - WARNING - No LLM evaluator configured; LLM patterns will be skipped.
+2026-02-06 16:20:42,387 - INFO - NOVA MCP SECURITY GATEWAY STARTING
+2026-02-06 16:20:42,388 - INFO - This server must be configured to run FIRST in the MCP chain
+2026-02-06 16:20:42,390 - INFO - Found 1 rule files in /app/auto-mcp-upload/data/3500/nova_rules
